@@ -17,6 +17,9 @@ h1, h2, h3 {color: #0B1F3A;}
 .card {background:#FFFFFF; border:1px solid #E3E8EF; border-radius:10px; padding:18px; height:100%; min-height:130px;}
 .card .card-title {color:#0B1F3A; font-size:1.05rem; font-weight:600; margin-bottom:6px;}
 .card .card-text {color:#5B6B82; font-size:0.92rem; line-height:1.45;}
+.card.tall {min-height:210px;}
+.card.short {min-height:90px;}
+div[data-testid="stButton"] {margin-top:0.5rem;}
 .hero-title {font-size:2.8rem; font-weight:700; color:#0B1F3A; line-height:1.15;}
 .hero-sub {font-size:1.15rem; color:#5B6B82; margin-top:0.75rem;}
 .logo {font-size:1.4rem; font-weight:700; color:#0B1F3A;}
@@ -253,7 +256,7 @@ with tab_home:
     ]
     for f_col, (f_title, f_text) in zip(st.columns(4), features):
         f_col.markdown(
-            f'<div class="card"><div class="card-title">{f_title}</div>'
+            f'<div class="card tall"><div class="card-title">{f_title}</div>'
             f'<div class="card-text">{f_text}</div></div>',
             unsafe_allow_html=True,
         )
@@ -267,7 +270,7 @@ with tab_home:
     for c_col, (c_name, c_tk) in zip(st.columns(3), featured):
         with c_col:
             st.markdown(
-                f'<div class="card"><div class="card-title">{c_name}</div>'
+                f'<div class="card short"><div class="card-title">{c_name}</div>'
                 f'<div class="card-text">{c_tk}</div></div>',
                 unsafe_allow_html=True,
             )
