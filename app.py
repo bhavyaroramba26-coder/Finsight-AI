@@ -14,6 +14,12 @@ h1, h2, h3 {color: #0B1F3A;}
 .kpi {background:#F5F7FA; border:1px solid #E3E8EF; border-radius:10px; padding:16px;}
 .kpi .label {color:#5B6B82; font-size:0.85rem;}
 .kpi .value {color:#0B1F3A; font-size:1.6rem; font-weight:600;}
+.card {background:#FFFFFF; border:1px solid #E3E8EF; border-radius:10px; padding:18px; height:100%; min-height:130px;}
+.card .card-title {color:#0B1F3A; font-size:1.05rem; font-weight:600; margin-bottom:6px;}
+.card .card-text {color:#5B6B82; font-size:0.92rem; line-height:1.45;}
+.hero-title {font-size:2.8rem; font-weight:700; color:#0B1F3A; line-height:1.15;}
+.hero-sub {font-size:1.15rem; color:#5B6B82; margin-top:0.75rem;}
+.logo {font-size:1.4rem; font-weight:700; color:#0B1F3A;}
 </style>
 """,
     unsafe_allow_html=True,
@@ -182,10 +188,91 @@ def style_fig(fig):
 
 
 # ---------- UI ----------
-st.title("FinSight AI")
-st.caption("Understand businesses beyond numbers.")
+def set_home_ticker(t: str):
+    st.session_state["home_ticker"] = t
 
-tab1, tab2, tab3 = st.tabs(["Company analysis", "Compare companies", "AI Analyst"])
+
+st.markdown('<div class="logo">📊 FinSight AI</div>', unsafe_allow_html=True)
+
+tab_home, tab1, tab2, tab3, tab_about = st.tabs(
+    ["Home", "Financial Analysis", "Company Comparison", "AI Analyst", "About"]
+)
+
+# ===== Home =====
+with tab_home:
+    st.markdown(
+        '<div style="padding:2rem 0 1rem 0;">'
+        '<div class="hero-title">Understand Businesses Beyond Numbers.</div>'
+        '<div class="hero-sub">AI-powered financial research and company analysis made simple.</div>'
+        "</div>",
+        unsafe_allow_html=True,
+    )
+
+    if "home_ticker" not in st.session_state:
+        st.session_state["home_ticker"] = ""
+    home_ticker = st.text_input(
+        "Search a listed Indian company by NSE ticker",
+        key="home_ticker",
+        placeholder="e.g. RELIANCE.NS",
+    ).strip().upper()
+
+    if home_ticker:
+        try:
+            with st.spinner("Fetching company snapshot..."):
+                h_name, h_ratios, _, _ = analyze(home_ticker)
+        except Exception as e:
+            st.error(f"Could not analyse {home_ticker}. {e}")
+        else:
+            h_latest = h_ratios.columns[-1]
+            st.markdown(f"**{h_name}** (latest year: {pd.to_datetime(h_latest).strftime('%b %Y')})")
+            h_cols = st.columns(4)
+            for h_col, h_label in zip(
+                h_cols, ["Net margin (%)", "ROE (%)", "Debt / Equity (x)", "Current ratio (x)"]
+            ):
+                kpi(h_col, h_label, h_ratios.loc[h_label, h_latest] if h_label in h_ratios.index else None)
+            st.caption("Open the Financial Analysis tab for the full ratio table and charts.")
+
+    st.markdown("### What FinSight AI does")
+    features = [
+        (
+            "Financial Statement Analysis",
+            "Pulls annual income statement and balance sheet data for listed Indian companies.",
+        ),
+        (
+            "Automated Ratio Analysis",
+            "Calculates growth, margin, return, leverage, liquidity and coverage ratios across years.",
+        ),
+        (
+            "AI Financial Research",
+            "An AI model explains the computed ratios in plain English, using only the numbers shown.",
+        ),
+        (
+            "Company Comparison",
+            "Compare two or three companies side by side on the same set of ratios.",
+        ),
+    ]
+    for f_col, (f_title, f_text) in zip(st.columns(4), features):
+        f_col.markdown(
+            f'<div class="card"><div class="card-title">{f_title}</div>'
+            f'<div class="card-text">{f_text}</div></div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("### Featured companies")
+    featured = [
+        ("Reliance Industries", "RELIANCE.NS"),
+        ("ITC Limited", "ITC.NS"),
+        ("Hindustan Unilever", "HINDUNILVR.NS"),
+    ]
+    for c_col, (c_name, c_tk) in zip(st.columns(3), featured):
+        with c_col:
+            st.markdown(
+                f'<div class="card"><div class="card-title">{c_name}</div>'
+                f'<div class="card-text">{c_tk}</div></div>',
+                unsafe_allow_html=True,
+            )
+            st.button(f"Load {c_name}", key=f"feat_{c_tk}", on_click=set_home_ticker, args=(c_tk,))
+    st.caption("Loading a featured company fills the search box at the top of this page.")
 
 # ===== Tab 1: single company =====
 with tab1:
@@ -328,6 +415,72 @@ with tab3:
             shown = r_ratios.copy()
             shown.columns = label_dates(shown.columns)
             st.dataframe(shown.round(2), width="stretch")
+
+# ===== About =====
+with tab_about:
+    st.subheader("About FinSight AI")
+    st.write(
+        "FinSight AI combines finance and artificial intelligence. Python code fetches annual "
+        "financial statements for listed Indian companies and calculates standard ratios. An AI "
+        "model then explains those computed numbers in plain English. The AI never supplies its "
+        "own figures: it only works from the table the app calculates."
+    )
+
+    st.markdown("#### How it works")
+    st.markdown(
+        "1. You enter an NSE ticker such as `RELIANCE.NS`.\n"
+        "2. The app fetches the income statement and balance sheet.\n"
+        "3. It calculates the ratios below for each available year.\n"
+        "4. Optionally, the AI Analyst writes a summary of strengths, risks and trends from those ratios."
+    )
+
+    st.markdown("#### Ratio definitions")
+    definitions = pd.DataFrame(
+        {
+            "Ratio": [
+                "Revenue growth (%)",
+                "Net margin (%)",
+                "Operating margin (%)",
+                "ROE (%)",
+                "Debt / Equity (x)",
+                "Current ratio (x)",
+                "Interest coverage (x)",
+            ],
+            "Formula": [
+                "(Revenue this year / Revenue last year - 1) x 100",
+                "Net income / Revenue x 100",
+                "Operating income (EBIT) / Revenue x 100",
+                "Net income / Year-end equity x 100",
+                "Total debt / Year-end equity",
+                "Current assets / Current liabilities",
+                "EBIT / Interest expense",
+            ],
+        }
+    )
+    st.table(definitions)
+
+    st.markdown("#### Data and limitations")
+    st.markdown(
+        "- Financial data comes from Yahoo Finance through the unofficial `yfinance` library. "
+        "It can have gaps or errors, so verify against company filings.\n"
+        "- Equity and debt follow the data source's definitions, which may differ from a company's own reported ratios.\n"
+        "- Banks and financial companies have different balance-sheet structures, so debt/equity and "
+        "current ratio are not meaningful for them.\n"
+        "- Ratios use year-end figures, not averages.\n"
+        "- The AI can make mistakes. Treat its output as a starting point for your own research."
+    )
+
+    st.markdown("#### Project information")
+    st.write(
+        "FinSight AI is a student project built by Bhavy Arora using Python, Streamlit, yfinance and "
+        "Google Gemini. It is not affiliated with any company mentioned."
+    )
+
+    st.markdown("#### Disclaimer")
+    st.write(
+        "FinSight AI is for education and research practice only. It does not provide investment, "
+        "tax or legal advice, and nothing here is a recommendation to buy or sell any security."
+    )
 
 st.caption(
     "Source: Yahoo Finance via the yfinance library (unofficial). Data may have gaps or errors, "
