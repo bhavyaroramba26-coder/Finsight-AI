@@ -231,12 +231,12 @@ with tab1:
                 )
                 fig.update_layout(barmode="group")
                 fig.update_yaxes(tickformat=",", title_text="₹ crore")
-                st.plotly_chart(style_fig(fig), use_container_width=True)
+                st.plotly_chart(style_fig(fig), width="stretch")
 
             st.subheader("Ratio table")
             table = ratios.copy()
             table.columns = label_dates(table.columns)
-            st.dataframe(table.round(2), use_container_width=True)
+            st.dataframe(table.round(2), width="stretch")
 
 # ===== Tab 2: comparison =====
 with tab2:
@@ -263,7 +263,7 @@ with tab2:
         if len(results) >= 2:
             table = pd.DataFrame({t: r.iloc[:, -1] for t, (n, r) in results.items()})
             st.markdown("**Latest available year**")
-            st.dataframe(table.round(2), use_container_width=True)
+            st.dataframe(table.round(2), width="stretch")
 
             st.caption(
                 " | ".join(
@@ -277,7 +277,7 @@ with tab2:
             fig = go.Figure()
             for i, t in enumerate(table.columns):
                 fig.add_bar(x=[t], y=[table.loc[metric, t]], name=t, marker_color=colors[i % 3])
-            st.plotly_chart(style_fig(fig), use_container_width=True)
+            st.plotly_chart(style_fig(fig), width="stretch")
 
             st.caption(
                 "Banks and financial companies (for example HDFCBANK.NS) have different balance-sheet "
@@ -327,7 +327,7 @@ with tab3:
         with st.expander("Data given to the AI"):
             shown = r_ratios.copy()
             shown.columns = label_dates(shown.columns)
-            st.dataframe(shown.round(2), use_container_width=True)
+            st.dataframe(shown.round(2), width="stretch")
 
 st.caption(
     "Source: Yahoo Finance via the yfinance library (unofficial). Data may have gaps or errors, "
