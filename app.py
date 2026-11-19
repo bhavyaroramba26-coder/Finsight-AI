@@ -533,3 +533,11 @@ st.caption(
     "Source: Yahoo Finance via the yfinance library (unofficial). Data may have gaps or errors, "
     "so verify against company filings. For education only, not investment advice."
 )
+
+st.markdown(
+    '<div style="color:#5B6B82; font-size:0.9rem; margin-top:0.25rem;">'
+    'Built by Bhavy Arora · '
+    '<a href="https://www.linkedin.com/in/bhavyarora7657" target="_blank" rel="noopener">LinkedIn</a>'
+    "</div>",
+    unsafe_allow_html=True,
+)
