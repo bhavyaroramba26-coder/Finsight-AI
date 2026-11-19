@@ -191,6 +191,38 @@ def style_fig(fig):
 
 
 # ---------- UI ----------
+def raw_table(ticker: str):
+    """Raw statement line items (in Rs crore) that the ratios are built from."""
+    _, income, balance = load_company(ticker)
+    items = [
+        (income, "Revenue", ["Total Revenue", "Operating Revenue"]),
+        (income, "Net income", ["Net Income", "Net Income Common Stockholders"]),
+        (income, "EBIT / operating income", ["EBIT", "Operating Income"]),
+        (income, "Interest expense", ["Interest Expense"]),
+        (
+            balance,
+            "Equity",
+            ["Stockholders Equity", "Common Stock Equity", "Total Equity Gross Minority Interest"],
+        ),
+        (balance, "Total debt", ["Total Debt"]),
+        (balance, "Current assets", ["Current Assets"]),
+        (balance, "Current liabilities", ["Current Liabilities"]),
+    ]
+    rows = {}
+    for df, label, names in items:
+        if df is None or df.empty:
+            continue
+        for n in names:
+            if n in df.index:
+                rows[f"{label} (Yahoo: {n})"] = df.loc[n].astype(float) / 1e7
+                break
+    if not rows:
+        return pd.DataFrame()
+    table = pd.DataFrame(rows).T.sort_index(axis=1).dropna(axis=1, how="all")
+    table.columns = label_dates(table.columns)
+    return table
+
+
 def set_home_ticker(t: str):
     st.session_state["home_ticker"] = t
 
@@ -327,6 +359,18 @@ with tab1:
             table = ratios.copy()
             table.columns = label_dates(table.columns)
             st.dataframe(table.round(2), width="stretch")
+
+            with st.expander("Raw line items used (₹ crore): check these against the annual report"):
+                raw = raw_table(ticker)
+                if raw.empty:
+                    st.write("No raw line items available.")
+                else:
+                    st.dataframe(raw.round(1), width="stretch")
+                    st.caption(
+                        "Values are in ₹ crore (1 crore = 10 million). The text after 'Yahoo' shows which "
+                        "line item the app matched. Compare with the company's consolidated annual report; "
+                        "small differences in definitions are normal."
+                    )
 
 # ===== Tab 2: comparison =====
 with tab2:
