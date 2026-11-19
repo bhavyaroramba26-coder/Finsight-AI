@@ -104,6 +104,58 @@ def analyze(ticker: str):
     return name, ratios, revenue, net_income
 
 
+# ---------- AI (Gemini) ----------
+# The app tries these models in order. If Google renames models, only this list needs changing.
+MODELS = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash"]
+
+
+def get_api_key():
+    try:
+        return st.secrets["GEMINI_API_KEY"]
+    except Exception:
+        return None
+
+
+def ask_gemini(prompt: str) -> str:
+    key = get_api_key()
+    if not key:
+        raise RuntimeError("NO_KEY")
+    from google import genai
+
+    client = genai.Client(api_key=key)
+    last_error = None
+    for model in MODELS:
+        try:
+            response = client.models.generate_content(model=model, contents=prompt)
+            return response.text
+        except Exception as e:
+            last_error = e
+    raise last_error
+
+
+def build_prompt(name: str, ticker: str, ratios: pd.DataFrame) -> str:
+    table = ratios.copy()
+    table.columns = label_dates(table.columns)
+    table_text = table.round(2).to_string()
+    return (
+        "You are a financial research assistant helping finance students understand listed Indian companies.\n"
+        f"Company: {name} ({ticker}). Figures come from annual statements; columns are financial year-ends.\n\n"
+        "Computed ratios (revenue growth, margins and ROE are in %, the rest are multiples):\n"
+        f"{table_text}\n\n"
+        "Write a concise analysis using ONLY the numbers above. Do not mention stock prices, news, "
+        "valuation multiples or any figure that is not in the table. If something cannot be concluded "
+        "from the data, say so. Use these sections with short bullet points:\n"
+        "1. Overview (2 sentences)\n"
+        "2. Strengths\n"
+        "3. Risks and watch points\n"
+        "4. Trends over the years shown\n"
+        "5. What to check next in the annual report\n"
+        "If the company looks like a bank or financial company, note that ratios such as debt/equity "
+        "and current ratio are not meaningful for it. End with one line saying this is educational "
+        "analysis and not investment advice."
+    )
+
+
 # ---------- Helpers ----------
 def label_dates(cols):
     return [pd.to_datetime(c).strftime("%b %Y") for c in cols]
@@ -133,7 +185,7 @@ def style_fig(fig):
 st.title("FinSight AI")
 st.caption("Understand businesses beyond numbers.")
 
-tab1, tab2 = st.tabs(["Company analysis", "Compare companies"])
+tab1, tab2, tab3 = st.tabs(["Company analysis", "Compare companies", "AI Analyst"])
 
 # ===== Tab 1: single company =====
 with tab1:
@@ -231,6 +283,51 @@ with tab2:
                 "Banks and financial companies (for example HDFCBANK.NS) have different balance-sheet "
                 "structures, so ratios like debt/equity and current ratio are not meaningful for them."
             )
+
+# ===== Tab 3: AI Analyst =====
+with tab3:
+    st.subheader("AI Analyst")
+    st.caption(
+        "The AI explains the ratios computed by this app. It does not browse the internet "
+        "and does not use live prices or news."
+    )
+    ai_ticker = st.text_input(
+        "Enter an NSE ticker", value="RELIANCE.NS", key="ai_ticker"
+    ).strip().upper()
+
+    if st.button("Generate analysis") and ai_ticker:
+        try:
+            with st.spinner("Computing ratios..."):
+                name, ratios, _, _ = analyze(ai_ticker)
+        except Exception as e:
+            st.error(f"Could not analyse {ai_ticker}. {e}")
+        else:
+            try:
+                with st.spinner("Writing analysis..."):
+                    text = ask_gemini(build_prompt(name, ai_ticker, ratios))
+                st.session_state["ai_result"] = (ai_ticker, name, ratios, text)
+            except RuntimeError:
+                st.info(
+                    "The AI key is not set up yet. Add GEMINI_API_KEY in the app's Secrets "
+                    "(Manage app, then Settings, then Secrets)."
+                )
+            except Exception as e:
+                st.error(
+                    "The AI service returned an error. This can happen if the free quota is "
+                    "used up or the model name has changed. Try again in a minute."
+                )
+                st.caption(str(e)[:300])
+
+    result = st.session_state.get("ai_result")
+    if result:
+        r_ticker, r_name, r_ratios, r_text = result
+        st.header(r_name)
+        st.markdown(r_text)
+        st.caption("AI-generated from the computed ratios. It can make mistakes, so verify against filings.")
+        with st.expander("Data given to the AI"):
+            shown = r_ratios.copy()
+            shown.columns = label_dates(shown.columns)
+            st.dataframe(shown.round(2), use_container_width=True)
 
 st.caption(
     "Source: Yahoo Finance via the yfinance library (unofficial). Data may have gaps or errors, "
