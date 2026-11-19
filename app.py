@@ -106,7 +106,7 @@ def analyze(ticker: str):
 
 # ---------- AI (Gemini) ----------
 # The app tries these models in order. If Google renames models, only this list needs changing.
-MODELS = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash"]
+MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"]
 
 
 def get_api_key():
@@ -123,14 +123,14 @@ def ask_gemini(prompt: str) -> str:
     from google import genai
 
     client = genai.Client(api_key=key)
-    last_error = None
+    errors = []
     for model in MODELS:
         try:
             response = client.models.generate_content(model=model, contents=prompt)
             return response.text
         except Exception as e:
-            last_error = e
-    raise last_error
+            errors.append(f"{model}: {str(e)[:150]}")
+    raise ValueError(" | ".join(errors))
 
 
 def build_prompt(name: str, ticker: str, ratios: pd.DataFrame) -> str:
@@ -316,7 +316,7 @@ with tab3:
                     "The AI service returned an error. This can happen if the free quota is "
                     "used up or the model name has changed. Try again in a minute."
                 )
-                st.caption(str(e)[:300])
+                st.caption(str(e)[:700])
 
     result = st.session_state.get("ai_result")
     if result:
